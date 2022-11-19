@@ -12,26 +12,29 @@
         }
         
         ul.suggestion-text {
+          	display: block;
+   					list-style-type: disc;
             visibility: hidden;
             background-color: rgba(255, 255, 255, 0.7);
             padding: 5px 5px;
             border-radius: 6px;
-            margin-top: -33px;
-            margin-left: -3px;
-
-            position: absolute;
+            margin-top: 0px;
+            margin-left: 0px;
         }
 
         span.known {
             color: #2b502b;
             font-weight: bolder;
             font-size: 16px;
+            pointer-events: none;
         }
 
         span.guess {
+          	margin-left: 10px;
             color: #858585;
             font-weight: bold;
             font-family: monospace;
+            pointer-events: none;
         }
 
         span.instruction {
@@ -39,10 +42,27 @@
             padding-right: 1em;
             padding-left: 1em;
             font-style: italic;
+            pointer-events: none;
         }
 
         ul {
-            list-style: none;
+          list-style: none;
+        }
+        
+        li.suggestion {
+          margin: 0px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+          font-weight: 400;
+          color: rgb(27, 39, 58);
+          font-size: 0.875rem;
+          line-height: 1.25rem;
+          display: block;
+          padding: 0.5rem 0;
+          cursor: pointer;
+        }
+      
+      	li.suggestion:hover {
+					background-color: rgb(247, 249, 250)
         }
 
         ul.tag-list {
@@ -51,6 +71,28 @@
             padding-left: 0px;
             margin-top: 1rem;
             margin-bottom: 0px;
+        }
+      
+        input.cf-form-input {
+          outline: none;
+          box-shadow: rgb(225 228 232 / 20%) 0px 2px 0px inset;
+          box-sizing: border-box;
+          background-color: rgb(255, 255, 255);
+          border: 1px solid rgb(207, 217, 224);
+          border-radius: 6px;
+          color: rgb(65, 77, 99);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+          font-size: 0.875rem;
+          line-height: 1.25rem;
+          padding: 10px 2rem 10px 0.75rem;
+          margin: 0px;
+          cursor: auto;
+          width: 100%;
+          z-index: 1;
+          height: 40px;
+          max-height: 40px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .tag-item {
@@ -110,7 +152,7 @@
     <div class="cf-form-field">
         <input type="text" class="cf-form-input tag-field" id="tag-field">
 
-        <ul class="suggestion-text" id="suggestion-text" style="pointer-events: none">
+        <ul class="suggestion-text" id="suggestion-text">
         </ul>
 
         <div class="cf-form-hint">
@@ -191,8 +233,7 @@
             window.addEventListener('onbeforeunload', onBeforeUnloadHandler);
             tagFieldEl.addEventListener('input', keyboardInputHandler);
             tagFieldEl.addEventListener('keydown', addTagHandler);
-
-
+          
             function keyboardInputHandler(event) {
                 renderSuggestions();
             }
@@ -222,6 +263,7 @@
                     return false;
                 }
             }
+            
 
             function onBeforeUnloadHandler(event) {
                 window.removeEventListener('onbeforeunload', onBeforeUnloadHandler);
@@ -233,7 +275,7 @@
                 if ( tagFieldEl.value == '' ) return [];
 
                 var suggestionsList = [];
-                var matcher = new RegExp('^' + tagFieldEl.value);
+                var matcher = new RegExp(tagFieldEl.value, 'i');
                 for (var i = 0; i < uniqueTags.length; i++) {
                     var x = uniqueTags[i]
                     if ( matcher.test(x) ) suggestionsList.push(x);
@@ -242,6 +284,15 @@
                 return suggestionsList.sort(function (a, b) {
                     return a.length - b.length;
                 });
+            }
+          
+            function suggestionClick(e) {
+              // console.log('--------------------->', e.target.dataset)
+              tagFieldEl.value = e.target.dataset.tagvalue;
+              while (suggestionTextEl.firstChild) {
+                suggestionTextEl.removeChild(suggestionTextEl.lastChild);
+              }
+              suggestionTextEl.style.visibility = 'hidden';
             }
 
             function renderSuggestions() {
@@ -259,14 +310,28 @@
 
                 for (var i = 0, len = suggestions.length; i < len; i++) {
                     var suggestionTemplate = document.querySelector('#suggestion-template').content;
-                    suggestionTemplate.querySelector('.known').innerHTML = tagFieldEl.value;
-                    suggestionTemplate.querySelector('.guess').innerHTML = suggestions[i].slice(tagFieldEl.value.length);
-
+                    var arr = suggestions[i].split('#')
+                    if (arr.length != 2) {
+                      break
+                    }
+                  	var key = arr[0].trim()
+                    var val = arr[1].trim()
+                    suggestionTemplate.querySelector('.known').innerHTML = key;
+                    suggestionTemplate.querySelector('.guess').innerHTML = val;
+                    
+               
                     if ( i.toString() == "0" ) { suggestionTemplate.querySelector('.instruction').innerHTML = "→ Tab"; } 
                     else { suggestionTemplate.querySelector('.instruction').innerHTML = ""; }
 
                     var thisSuggestion = document.importNode(suggestionTemplate, true);
+                    thisSuggestion.querySelector('li').id = `suggestion_${i}`;
+                    thisSuggestion.querySelector('li').dataset.tagvalue = suggestions[i];
+                    
+                    
                     document.querySelector('#suggestion-text').appendChild(thisSuggestion);
+                    // document.querySelector(`#suggestion_${i}`).onmousedown = function (e) { e.preventDefault(); suggestionClick(suggestions[i]) };
+                    document.querySelector(`#suggestion_${i}`).onmousedown = suggestionClick;
+                    console.log(document.querySelector(`#suggestion_${i}`))
                 }
 
                 suggestionTextEl.style.visibility = 'visible';
@@ -295,7 +360,11 @@
 
                 _tagValues.forEach(function (tag, index) {
                     var tagTemplate = document.querySelector('#tag').content;
-                    tagTemplate.querySelector('.tag-item span.tag-label').textContent = tag;
+                    var arr = tag.split('#')
+                    var val = arr[1] || arr[0]
+                    val = val.trim()
+       
+                    tagTemplate.querySelector('.tag-item span.tag-label').textContent = val;
 
                     var thisTag = document.importNode(tagTemplate, true);
                     document.querySelector('#tag-list').appendChild(thisTag);
